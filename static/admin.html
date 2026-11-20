@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helpline Admin</title>
+<!-- ADMIN: judges ki CSV upload karo, aur dekho kisan kya pooch rahe hain (kaunse sawaal ka jawab nahi tha). -->
+<style>
+  :root { --bg: #f6f7f5; --card: #fff; --ink: #1d2b1f; --muted: #66706a; --line: #dfe3dd; --green: #1f5c2e; --red: #b03a2e; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #121614; --card: #1b211d; --ink: #eef1ec; --muted: #9aa59e; --line: #2c342f; --green: #4caf68; --red: #e5604f; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, "Noto Sans Gurmukhi", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h1 { font-size: 22px; } h2 { font-size: 17px; margin-top: 0; }
+  button { background: var(--green); color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-size: 15px; cursor: pointer; }
+  pre { white-space: pre-wrap; background: var(--bg); padding: 10px; border-radius: 8px; font-size: 13px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .no { color: var(--red); font-weight: 700; }
+  .stats { display: flex; gap: 24px; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 24px; }
+  h3 { font-size: 15px; margin: 18px 0 4px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .opt { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+  button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  #report { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--bg); }
+  #report.err { border: 1px solid var(--red); }
+  .tokenbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kisan Helpline: Admin</h1>
+  <div class="tokenbar">
+    <input id="token" type="password" placeholder="admin token" style="padding:6px;font-size:14px;width:200px">
+    Needed only when this page is opened through the public (tunnel) URL. ADMIN_TOKEN is in .env.
+  </div>
+
+  <div class="card">
+    <h2>1. Price data</h2>
+    <div class="stats" id="summary"></div>
+    <p class="muted" id="summary-names"></p>
+
+    <h3>Upload a CSV (judges' dataset / Agmarknet export)</h3>
+    <p>Columns are detected automatically. Needed: mandi/market, crop/commodity, date, modal price. Min/max price, district and variety are optional.</p>
+    <label class="opt"><input type="radio" name="mode" value="replace" checked>
+      <span><b>Replace</b>: delete all current data and use only this file. Use this for the judges' dataset.</span></label>
+    <label class="opt"><input type="radio" name="mode" value="merge">
+      <span><b>Merge</b>: keep current data and add this file. A row with the same mandi + crop + variety + date updates the old price instead of creating a duplicate.</span></label>
+    <div style="margin-top:10px">
+      <input type="file" id="file" accept=".csv">
+      <button id="upload">Upload</button>
+      <button id="reset" class="secondary">Reset to sample data</button>
+    </div>
+    <div id="report" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Try a question by text</h2>
+    <input id="q" style="width:min(100%,420px);padding:8px;font-size:16px" value="ਅੰਮ੍ਰਿਤਸਰ ਮੰਡੀ ਵਿੱਚ ਕਣਕ ਦਾ ਭਾਅ">
+    <button id="ask">Ask</button>
+    <pre id="answer" hidden></pre>
+  </div>
+
+  <div class="card">
+    <h2>3. Phone call demo ("missed call" &rarr; system calls back)</h2>
+    <p>Trial account: the number must be verified in Twilio first. Needs the admin token (top of the page).</p>
+    <input id="phone" placeholder="+91XXXXXXXXXX" style="padding:8px;font-size:16px;width:180px">
+    <button id="call">Call this number</button>
+    <pre id="callres" hidden></pre>
+  </div>
+
+  <div class="card">
+    <h2>4. What farmers asked</h2>
+    <div class="stats" id="stats"></div>
+    <div class="table-wrap"><table id="log"></table></div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const adminHeaders = () => ({ "X-Admin-Token": $("token").value });
+
+async function loadSummary() {
+  const s = await fetch("/api/data-summary").then(r => r.json());
+  $("summary").innerHTML = `<div class="stat"><b>${s.rows}</b>price rows</div>
+    <div class="stat"><b>${s.markets}</b>mandis</div><div class="stat"><b>${s.crops}</b>crops</div>
+    <div class="stat"><b>${esc(s.from ?? "-")} &rarr; ${esc(s.to ?? "-")}</b>dates</div>`;
+  $("summary-names").textContent = "Mandis: " + s.market_names.join(", ") + "  |  Crops: " + s.crop_names.join(", ");
+}
+
+function showReport(res, ok) {
+  const box = $("report");
+  box.hidden = false;
+  box.classList.toggle("err", !ok);
+  if (!ok) { box.innerHTML = "<b>Not imported:</b> " + esc(res.error || res.detail || JSON.stringify(res)); return; }
+  let html = `<b>${res.mode === "merge" ? "Merged" : "Replaced"}.</b> ${res.rows_in_file} rows in the file: ${res.added} new, ${res.updated} updated existing rows,
+    ${res.duplicates_in_file} repeated inside the file (last one kept), ${res.rejected} rejected. Database now has ${res.total_rows_now} rows.`;
+  if (res.rejected_rows.length) {
+    html += "<br><br><b>Rejected rows:</b><br>" + res.rejected_rows.map(r => `line ${r.line}: ${esc(r.reason)}`).join("<br>");
+  }
+  box.innerHTML = html;
+}
+
+$("upload").onclick = async () => {
+  const f = $("file").files[0];
+  if (!f) { showReport({ error: "Choose a CSV file first." }, false); return; }
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  if (mode === "replace" && !confirm("Replace ALL current price data with this file?")) return;
+  const form = new FormData(); form.append("file", f);
+  const r = await fetch("/api/upload-csv?mode=" + mode, { method: "POST", body: form, headers: adminHeaders() });
+  const res = await r.json();
+  showReport(res, r.ok && res.ok);
+  loadSummary();
+};
+
+$("reset").onclick = async () => {
+  if (!confirm("Go back to the sample test data? Current data will be replaced.")) return;
+  const r = await fetch("/api/reset-sample", { method: "POST", headers: adminHeaders() });
+  showReport(await r.json(), r.ok);
+  loadSummary();
+};
+
+$("ask").onclick = async () => {
+  const res = await fetch("/api/ask-text", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: $("q").value })
+  }).then(r => r.json());
+  $("answer").hidden = false;
+  $("answer").textContent = JSON.stringify(
+    { text: res.text, answered: res.answered, understood: res.understood, evidence: res.evidence, sources: res.sources, timings: res.timings }, null, 2);
+  loadLog();
+};
+
+$("call").onclick = async () => {
+  const r = await fetch("/api/call-me", {
+    method: "POST", headers: { "Content-Type": "application/json", ...adminHeaders() },
+    body: JSON.stringify({ phone: $("phone").value.trim() })
+  });
+  $("callres").hidden = false;
+  $("callres").textContent = JSON.stringify(await r.json(), null, 2);
+};
+
+async function loadLog() {
+  const rows = await fetch("/api/log").then(r => r.json());
+  const answered = rows.filter(r => r.answered).length;
+  const avg = rows.length ? Math.round(rows.reduce((s, r) => s + r.total_ms, 0) / rows.length) : 0;
+  $("stats").innerHTML = `<div class="stat"><b>${rows.length}</b>questions (last 50)</div>
+    <div class="stat"><b>${answered}</b>answered with a price</div>
+    <div class="stat"><b>${rows.length - answered}</b>no answer</div>
+    <div class="stat"><b>${avg} ms</b>average time</div>`;
+  $("log").innerHTML = "<tr><th>Time</th><th>Channel</th><th>Heard</th><th>Crop</th><th>Market</th><th>Answer</th><th>ms</th></tr>" +
+    rows.map(r => `<tr><td>${esc(r.at)}</td><td>${esc(r.channel)}</td><td>${esc(r.heard)}</td><td>${esc(r.crop)}</td>
+      <td>${esc(r.market)}</td><td class="${r.answered ? "" : "no"}">${esc(r.answer)}</td><td>${r.total_ms}</td></tr>`).join("");
+}
+loadSummary();
+loadLog();
+setInterval(loadLog, 5000);
+</script>
+</body>
+</html>

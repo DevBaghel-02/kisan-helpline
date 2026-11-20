@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="pa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f5c2e">
+<title>ਕਿਸਾਨ ਹੈਲਪਲਾਈਨ</title>
+<!--
+  KISAN WALI SCREEN. Design ke rules:
+  - Sab kuch Punjabi mein. Na login, na typing.
+  - Ek bada mic button: dabao, bolo, chup ho jao -> apne aap ruk jaata hai.
+  - Jo bolna na chahe: fasal ki photo pe tap karo.
+  - Jawab apne aap awaaz mein bajta hai + bade akshar mein dikhta hai.
+  - Koi bahar ki file/font nahi -> 2G pe bhi jaldi khulta hai (poori file ~15 KB).
+-->
+<style>
+  :root {
+    --bg: #f7f3e8; --card: #ffffff; --ink: #1d2b1f; --muted: #5b6b5e;
+    --green: #1f5c2e; --green-2: #2e7d43; --wheat: #e9b949; --red: #c0392b; --line: #ddd5bf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121a14; --card: #1c271f; --ink: #f1efe6; --muted: #a9b5aa;
+      --green: #3d9a57; --green-2: #4caf68; --wheat: #f0c75e; --red: #e5604f; --line: #2d3a30;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans Gurmukhi", "Raavi", "Mukta Mahee", system-ui, sans-serif;
+    font-size: 20px; line-height: 1.5;
+  }
+  header { background: var(--green); color: #fff; padding: 14px 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 26px; }
+  header p { margin: 2px 0 0; font-size: 16px; opacity: .9; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px; }
+
+  .mic-wrap { display: flex; flex-direction: column; align-items: center; margin: 12px 0 8px; }
+  #mic {
+    width: 180px; height: 180px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--green-2); color: #fff; font-size: 72px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); touch-action: manipulation;
+  }
+  #mic:focus-visible { outline: 5px solid var(--wheat); outline-offset: 4px; }
+  #mic.listening { background: var(--red); animation: pulse 1.2s infinite; }
+  #mic.busy { background: var(--muted); }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  #status { margin-top: 14px; font-size: 24px; font-weight: 700; text-align: center; min-height: 36px; }
+
+  #answer {
+    display: none; background: var(--card); border: 3px solid var(--wheat); border-radius: 18px;
+    padding: 16px; margin: 12px 0 20px;
+  }
+  #answer .heard { color: var(--muted); font-size: 17px; margin: 0 0 8px; }
+  #answer .text { font-size: 26px; font-weight: 700; margin: 0; }
+  #answer.nodata { border-color: var(--line); }
+  #replay {
+    margin-top: 14px; width: 100%; padding: 14px; border-radius: 14px; border: 0;
+    background: var(--wheat); color: #2b2100; font-size: 22px; font-weight: 700; cursor: pointer;
+  }
+  #meta { margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+  h2 { font-size: 21px; margin: 20px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tile {
+    background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 10px 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+    font-size: 20px; font-weight: 700; color: var(--ink); min-height: 96px; justify-content: center;
+  }
+  .tile .icon { font-size: 40px; line-height: 1; }
+  .tile:active { transform: scale(.97); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 2px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px;
+    padding: 8px 16px; font-size: 18px; cursor: pointer;
+  }
+  .chip.on { background: var(--green); border-color: var(--green); color: #fff; }
+  footer { text-align: center; font-size: 14px; color: var(--muted); padding: 24px 16px 32px; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌾 ਕਿਸਾਨ ਹੈਲਪਲਾਈਨ</h1>
+  <p>ਮੰਡੀ ਦੇ ਭਾਅ ਪੰਜਾਬੀ ਵਿੱਚ</p>
+</header>
+
+<main>
+  <div class="mic-wrap">
+    <button id="mic" aria-label="ਬਟਨ ਦਬਾ ਕੇ ਬੋਲੋ">🎤</button>
+    <div id="status">ਬਟਨ ਦਬਾਓ ਅਤੇ ਬੋਲੋ</div>
+  </div>
+
+  <section id="answer" aria-live="polite">
+    <p class="heard"></p>
+    <p class="text"></p>
+    <button id="replay">🔊 ਦੁਬਾਰਾ ਸੁਣੋ</button>
+    <div id="meta"></div>
+  </section>
+
+  <h2>ਮੰਡੀ ਚੁਣੋ</h2>
+  <div class="chips" id="markets"></div>
+
+  <h2>ਜਾਂ ਫ਼ਸਲ ਦੀ ਫ਼ੋਟੋ ਦਬਾਓ</h2>
+  <div class="grid" id="crops"></div>
+</main>
+
+<footer>ਬਿਨਾਂ ਸਮਾਰਟਫ਼ੋਨ ਵਾਲੇ ਕਿਸਾਨ ਫ਼ੋਨ ਕਾਲ ਰਾਹੀਂ ਵੀ ਪੁੱਛ ਸਕਦੇ ਹਨ · <a href="/admin">admin</a></footer>
+
+<audio id="player" preload="none"></audio>
+
+<script>
+// ---------- chhote helpers ----------
+const $ = (id) => document.getElementById(id);
+const mic = $("mic"), statusEl = $("status"), player = $("player");
+let selectedMarket = null;   // {name, pa}
+
+function setStatus(text) { statusEl.textContent = text; }
+
+function showAnswer(res) {
+  const box = $("answer");
+  box.style.display = "block";
+  box.classList.toggle("nodata", !res.answered);
+  box.querySelector(".heard").textContent = res.heard ? "ਤੁਸੀਂ ਪੁੱਛਿਆ: " + res.heard : "";
+  box.querySelector(".text").textContent = res.text;
+  const t = res.timings || {};
+  const parts = [];
+  if (t.asr_ms != null) parts.push("ਸੁਣਨਾ " + t.asr_ms + "ms");
+  parts.push("ਸਮਝਣਾ " + (t.understand_ms ?? 0) + "ms", "ਡਾਟਾ " + (t.answer_ms ?? 0) + "ms");
+  if (t.tts_ms != null) parts.push("ਆਵਾਜ਼ " + t.tts_ms + "ms");
+  let meta = "⏱ ਕੁੱਲ " + (t.total_ms / 1000).toFixed(1) + "s · " + parts.join(" · ");
+  if (res.sources && res.sources.length) {
+    meta += " · ਸਰੋਤ: " + res.sources.map(s => `${s.market} / ${s.commodity} / ${s.date}`).join("; ");
+  }
+  $("meta").textContent = meta;
+  if (res.audio_file) {
+    player.src = "/audio/" + res.audio_file;
+    player.play().catch(() => {});   // kuch phone auto-play rokte hain -> "ਦੁਬਾਰਾ ਸੁਣੋ" button hai
+  }
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+$("replay").onclick = () => { player.currentTime = 0; player.play(); };
+
+// ---------- fasal / mandi buttons ----------
+async function loadOptions() {
+  let res;
+  try {
+    res = await fetch("/api/crops").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  } catch (e) {
+    // Page Python server ke bina khola gaya (jaise VS Code Live Server ya file double-click)
+    setStatus("⚠️ ਸਰਵਰ ਨਹੀਂ ਚੱਲ ਰਿਹਾ");
+    $("crops").innerHTML = `<p style="grid-column:1/-1;font-size:16px">Server is not running, or this page was opened without it.
+      In the project folder, run <code>python -m uvicorn app.main:app --port 8000</code>
+      and open <a href="http://localhost:8000">http://localhost:8000</a>. Live Server won't work.</p>`;
+    return;
+  }
+  $("crops").innerHTML = "";
+  for (const c of res.crops) {
+    const b = document.createElement("button");
+    b.className = "tile";
+    b.innerHTML = `<span class="icon" aria-hidden="true">${c.icon}</span><span>${c.pa}</span>`;
+    b.onclick = () => askText(`${selectedMarket ? selectedMarket.pa + " ਮੰਡੀ " : ""}${c.pa} ਦਾ ਭਾਅ`);
+    $("crops").appendChild(b);
+  }
+  $("markets").innerHTML = "";
+  for (const m of res.markets) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = m.pa;
+    b.onclick = () => {
+      selectedMarket = selectedMarket && selectedMarket.name === m.name ? null : m;
+      document.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b && selectedMarket));
+    };
+    $("markets").appendChild(b);
+  }
+}
+
+async function askText(text) {
+  setStatus("⏳ ਭਾਅ ਲੱਭ ਰਹੇ ਹਾਂ…");
+  const res = await fetch("/api/ask-text", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text })
+  }).then(r => r.json());
+  setStatus("ਬਟਨ ਦਬਾਓ ਅਤੇ ਬੋਲੋ");
+  showAnswer(res);
+}
+
+// ---------- recording: mic -> 16 kHz WAV ----------
+// Browser ki apni noise suppression ON karte hain (fan / bheed ka shor kam).
+// Chup hone ke 1.5 second baad recording apne aap ruk jaati hai, ya button dobara dabao.
+let rec = null;
+
+async function startRecording() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: true, channelCount: 1 }
+  });
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const source = ctx.createMediaStreamSource(stream);
+  const proc = ctx.createScriptProcessor(4096, 1, 1);
+  const chunks = [];
+  let spoke = false, silentSince = performance.now();
+  const started = performance.now();
+
+  proc.onaudioprocess = (e) => {
+    const input = e.inputBuffer.getChannelData(0);
+    chunks.push(new Float32Array(input));
+    let sum = 0;
+    for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+    const loud = Math.sqrt(sum / input.length) > 0.02;      // simple awaaz-detector
+    const now = performance.now();
+    if (loud) { spoke = true; silentSince = now; }
+    if ((spoke && now - silentSince > 1500) || now - started > 10000 || (!spoke && now - started > 6000)) {
+      stopRecording();
+    }
+  };
+  source.connect(proc);
+  proc.connect(ctx.destination);
+  rec = { stream, ctx, proc, source, chunks, rate: ctx.sampleRate };
+}
+
+function stopRecording() {
+  if (!rec) return;
+  const r = rec; rec = null;
+  r.proc.disconnect(); r.source.disconnect();
+  r.stream.getTracks().forEach(t => t.stop());
+  r.ctx.close();
+  sendAudio(encodeWav(r.chunks, r.rate, 16000));
+}
+
+function encodeWav(chunks, inRate, outRate) {
+  // saare tukde jodo, phir 16000 samples/second pe le aao (chhoti file -> 2G pe jaldi upload)
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const all = new Float32Array(total);
+  let off = 0;
+  for (const c of chunks) { all.set(c, off); off += c.length; }
+  const ratio = inRate / outRate, n = Math.floor(total / ratio);
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, outRate, true); v.setUint32(28, outRate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const s = Math.max(-1, Math.min(1, all[Math.floor(i * ratio)]));
+    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+async function sendAudio(blob) {
+  mic.className = "busy";
+  setStatus("⏳ ਸੁਣ ਰਹੇ ਹਾਂ…");
+  try {
+    const form = new FormData();
+    form.append("audio", blob, "question.wav");
+    const res = await fetch("/api/ask", { method: "POST", body: form }).then(r => r.json());
+    if (!res.ok) throw new Error(res.error);
+    showAnswer(res);
+  } catch (e) {
+    showAnswer({ answered: false, text: "ਮਾਫ਼ ਕਰਨਾ, ਇੰਟਰਨੈੱਟ ਦੀ ਸਮੱਸਿਆ ਹੈ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।", timings: { total_ms: 0 } });
+  }
+  mic.className = "";
+  setStatus("ਬਟਨ ਦਬਾਓ ਅਤੇ ਬੋਲੋ");
+}
+
+mic.onclick = async () => {
+  if (mic.className === "busy") return;
+  if (rec) { stopRecording(); return; }
+  try {
+    player.pause();
+    await startRecording();
+    mic.className = "listening";
+    setStatus("🔴 ਬੋਲੋ… (ਚੁੱਪ ਹੋਣ ਤੇ ਆਪੇ ਰੁਕ ਜਾਵੇਗਾ)");
+  } catch (e) {
+    setStatus("ਮਾਈਕ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ, ਜਾਂ ਹੇਠਾਂ ਫ਼ਸਲ ਦੀ ਫ਼ੋਟੋ ਦਬਾਓ");
+  }
+};
+
+loadOptions();
+</script>
+</body>
+</html>
