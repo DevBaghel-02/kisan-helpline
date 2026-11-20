@@ -60,7 +60,11 @@ Security: `/voice/*` checks the Twilio signature, recordings are fetched only fr
 - Build command: `pip install -r requirements.txt`
 - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
-Or use the blueprint: Render dashboard → New → Blueprint → pick this repo. `render.yaml` sets everything, including a random `ADMIN_TOKEN` (find it under the service's Environment tab). On the free plan the server sleeps after 15 idle minutes, and an uploaded CSV is lost on restart.
+**Live:** https://kisan-helpline.onrender.com (farmer page), `/phone` (call simulator), `/admin`.
+
+Or use the blueprint: Render dashboard → New → Blueprint → pick this repo. `render.yaml` sets everything, including a random `ADMIN_TOKEN` (find it under the service's Environment tab). On the free plan the server sleeps after 15 idle minutes, and an uploaded CSV is lost on restart. The repo is connected as a public URL, so after a push use **Manual Deploy → Deploy latest commit**.
+
+Weather: Render's free IP is shared, so Open-Meteo sometimes answers 429 (too many requests); the bot then uses wttr.in, and the source label shows which one answered.
 
 ## Known limits (be honest in the demo)
 - ASR uses Google's free, unofficial endpoint. It is good but rate-limited; Bhashini is the planned replacement.
