@@ -1,0 +1,19 @@
+# Render.com par deploy (free plan). Render is file ko padh ke sab apne aap set karta hai:
+# Dashboard -> New -> Blueprint -> ye GitHub repo chuno -> Apply.
+#
+# Dhyaan do (free plan):
+#  - 15 minute koi na aaye to server so jaata hai; pehli request ~1 minute leti hai. Demo se pehle ek baar khol lo.
+#  - Disk temporary hai: restart pe database sample data se dobara banta hai. Judges ki CSV dobara upload karni hogi.
+services:
+  - type: web
+    name: kisan-helpline
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/crops
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: ADMIN_TOKEN          # admin page ka password, Render khud random bana deta hai
+        generateValue: true

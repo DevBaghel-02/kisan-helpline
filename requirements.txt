@@ -1,6 +1,7 @@
-fastapi
-uvicorn[standard]
-python-multipart
-SpeechRecognition
-gTTS
-twilio
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+SpeechRecognition>=3.10
+gTTS>=2.5
+twilio>=9.0
+numpy>=1.26
