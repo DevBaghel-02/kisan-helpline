@@ -1,0 +1,17 @@
+state,district,market,commodity,variety,grade,arrival_date,min_price,max_price,modal_price
+Punjab,Moga,Moga,Wheat,Other,FAQ,20/11/2026,2455,2530,2490
+Punjab,Moga,Moga,Wheat,Other,FAQ,21/11/2026,2465,2540,2505
+Punjab,Moga,moga,Paddy(Dhan)(Common),Other,FAQ,21/11/2026,2285,2345,2315
+Punjab,Moga,Moga,Potato,Other,FAQ,21/11/2026,920,1380,1120
+Punjab,Patiala,Patiala,Paddy(Dhan)(Basmati),1121,FAQ,21/11/2026,3700,4150,3950
+Punjab,Patiala,Patiala,Wheat,Other,FAQ,21/11/2026,2470,2545,2510
+Punjab,Patiala,Rajpura,Mustard,Other,FAQ,21/11/2026,5650,6150,5900
+Punjab,Sangrur,Sangrur,Cotton,Other,FAQ,21/11/2026,7050,7600,7350
+Punjab,Sangrur,Sangrur,Wheat,Other,FAQ,21/11/2026,2460,2535,2500
+Punjab,Ludhiana,Khanna,Maize,Other,FAQ,21/11/2026,1950,2200,2080
+Punjab,Ludhiana,Khanna,Moong,Other,FAQ,21/11/2026,7900,8500,8200
+Punjab,Amritsar,Amritsar,Wheat,Other,FAQ,21/11/2026,2475,2550,2515
+Punjab,Amritsar,Amritsar,Onion,Other,FAQ,21/11/2026,1850,2650,2250
+Punjab,Amritsar,Amritsar,Onion,Other,FAQ,21/11/2026,1850,2650,2250
+Punjab,Bathinda,Bathinda,Cotton,Other,FAQ,,7000,7550,7300
+Punjab,Faridkot,Faridkot,Wheat,Other,FAQ,21/11/2026,2450,2520,NA
