@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+data/kisan.db
+data/tts_cache/
+.env
+.claude/
+# Test recordings: synthetic ones can be remade (scripts/benchmark.py --make-synthetic),
+# and real recordings of people's voices should not go into a public repo.
+tests/audio/
