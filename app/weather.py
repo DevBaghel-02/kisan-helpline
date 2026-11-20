@@ -14,6 +14,8 @@ import urllib.request
 from datetime import date, timedelta
 
 API = "https://api.open-meteo.com/v1/forecast"
+SOURCE_NAMES = {"_open_meteo": "Open-Meteo", "_wttr": "wttr.in"}
+WTTR = "https://wttr.in"     # backup jab Open-Meteo mana kare (429)
 CACHE_SECONDS = 30 * 60          # mausam 30 minute tak dobara nahi mangte (fast + API pe bojh kam)
 _cache: dict[tuple, tuple[float, dict]] = {}
 
@@ -28,21 +30,47 @@ def fetch(lat: float, lon: float) -> dict:
     hit = _cache.get(key)
     if hit and time.time() - hit[0] < CACHE_SECONDS:
         return hit[1]
+    errors = []
+    for source in (_open_meteo, _wttr):
+        try:
+            days = source(lat, lon)
+            for d in days.values():
+                d["provider"] = SOURCE_NAMES[source.__name__]
+            break
+        except Exception as e:          # 429 / network / format: agla source try karo
+            errors.append(f"{source.__name__}: {e}")
+    else:
+        raise WeatherError("Mausam nahi mila: " + " | ".join(errors))
+    _cache[key] = (time.time(), days)
+    return days
+
+
+def _get_json(url: str) -> dict:
+    req = urllib.request.Request(url, headers={"User-Agent": "kisan-helpline/1.0 (hackathon demo)"})
+    with urllib.request.urlopen(req, timeout=4) as r:
+        return json.load(r)
+
+
+def _open_meteo(lat: float, lon: float) -> dict:
+    """Pehla source. Render free ka IP bahut log share karte hain, isliye kabhi kabhi 429 aata hai."""
     params = urllib.parse.urlencode({
         "latitude": lat, "longitude": lon, "timezone": "Asia/Kolkata", "forecast_days": 3,
         "daily": "temperature_2m_min,temperature_2m_max,precipitation_probability_max,precipitation_sum",
     })
-    try:
-        with urllib.request.urlopen(f"{API}?{params}", timeout=4) as r:
-            raw = json.load(r)["daily"]
-    except Exception as e:
-        raise WeatherError(f"Open-Meteo se mausam nahi mila: {e}")
-    days = {}
-    for i, d in enumerate(raw["time"]):
-        days[d] = {"tmin": raw["temperature_2m_min"][i], "tmax": raw["temperature_2m_max"][i],
-                   "rain_prob": raw["precipitation_probability_max"][i], "rain_mm": raw["precipitation_sum"][i]}
-    _cache[key] = (time.time(), days)
-    return days
+    raw = _get_json(f"{API}?{params}")["daily"]
+    return {d: {"tmin": raw["temperature_2m_min"][i], "tmax": raw["temperature_2m_max"][i],
+                "rain_prob": raw["precipitation_probability_max"][i], "rain_mm": raw["precipitation_sum"][i]}
+            for i, d in enumerate(raw["time"])}
+
+
+def _wttr(lat: float, lon: float) -> dict:
+    """Backup source (wttr.in, free, koi key nahi). 3-3 ghante ke 8 hisse: barish ki sambhavna = sabse zyada,
+    barish mm = sab ka jod. Tareekh local (India) ki hoti hai."""
+    raw = _get_json(f"{WTTR}/{lat},{lon}?format=j1")["weather"]
+    return {w["date"]: {"tmin": float(w["mintempC"]), "tmax": float(w["maxtempC"]),
+                        "rain_prob": max(int(h["chanceofrain"]) for h in w["hourly"]),
+                        "rain_mm": round(sum(float(h["precipMM"]) for h in w["hourly"]), 1)}
+            for w in raw}
 
 
 def target_day(day_word: str | None, today: date) -> tuple[date, str]:
@@ -63,4 +91,4 @@ def forecast(lat: float, lon: float, day: date) -> dict | None:
         return None
     return {"tmin": round(d["tmin"]), "tmax": round(d["tmax"]),
             "rain_prob": round(d["rain_prob"]) if d["rain_prob"] is not None else None,
-            "rain_mm": d["rain_mm"]}
+            "rain_mm": d["rain_mm"], "provider": d.get("provider", "Open-Meteo")}

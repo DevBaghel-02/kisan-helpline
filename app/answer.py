@@ -3,7 +3,7 @@ ANSWER ENGINE: grounded jawab banana (Punjabi, ya Hindi sawaal ho to Hindi).
 
 SABSE ZAROORI RULE: jawab mein har number kisi SOURCE se aata hai.
   - Bhaav   : database ki price row
-  - Mausam  : Open-Meteo ka jawab (weather.py)
+  - Mausam  : Open-Meteo ka jawab, 429 pe wttr.in (weather.py)
   - Schemes : data/schemes.json (official sources ke link ke saath)
   Jawab fixed templates se banta hai, numbers source se bhare jaate hain.
   - check_grounded() bolne se pehle jawab ke har number ko sources se milaata hai.
@@ -228,9 +228,9 @@ def _weather_answer(q, lang, today, result):
         text += t["rain"].format(p=f["rain_prob"])
         if f["rain_prob"] >= RAIN_ADVICE_FROM:
             text += t["rain_advice"]
-    source = {"type": "weather", "place": place, "date": day.isoformat(), "provider": "Open-Meteo",
+    source = {"type": "weather", "place": place, "date": day.isoformat(), "provider": f["provider"],
               **f, "numbers": [f["tmin"], f["tmax"], f["rain_prob"]],
-              "label": f"Open-Meteo / {place} / {day.isoformat()}"}
+              "label": f"{f['provider']} / {place} / {day.isoformat()}"}
     return _done(result, text, [source], "weather", lang)
 
 

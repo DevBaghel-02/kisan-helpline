@@ -161,3 +161,23 @@ class IndiaDate(unittest.TestCase):
         from datetime import datetime, timedelta, timezone
         from app.answer import india_today
         self.assertEqual(india_today(), (datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)).date())
+
+
+class WeatherFallback(unittest.TestCase):
+    def test_wttr_used_when_open_meteo_429(self):
+        weather._cache.clear()
+        day = {"2026-11-21": {"tmin": 14.0, "tmax": 24.0, "rain_prob": 10, "rain_mm": 0.0}}
+        with mock.patch.object(weather, "_open_meteo", side_effect=Exception("HTTP Error 429")), \
+             mock.patch.object(weather, "_wttr", return_value=day):
+            weather._open_meteo.__name__ = "_open_meteo"; weather._wttr.__name__ = "_wttr"
+            f = weather.forecast(31.6, 74.9, date(2026, 11, 21))
+        weather._cache.clear()
+        self.assertEqual((f["tmin"], f["tmax"], f["provider"]), (14, 24, "wttr.in"))
+
+    def test_both_fail_raises(self):
+        weather._cache.clear()
+        with mock.patch.object(weather, "_open_meteo", side_effect=Exception("429")), \
+             mock.patch.object(weather, "_wttr", side_effect=Exception("down")):
+            weather._open_meteo.__name__ = "_open_meteo"; weather._wttr.__name__ = "_wttr"
+            with self.assertRaises(weather.WeatherError):
+                weather.fetch(1.0, 2.0)
