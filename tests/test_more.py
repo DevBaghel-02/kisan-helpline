@@ -154,3 +154,10 @@ class LanguagePick(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IndiaDate(unittest.TestCase):
+    def test_india_today_is_ist(self):
+        from datetime import datetime, timedelta, timezone
+        from app.answer import india_today
+        self.assertEqual(india_today(), (datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)).date())

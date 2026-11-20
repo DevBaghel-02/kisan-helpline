@@ -11,7 +11,7 @@ SABSE ZAROORI RULE: jawab mein har number kisi SOURCE se aata hai.
   - Data na ho to saaf bolte hain "ਮੇਰੇ ਕੋਲ ਨਹੀਂ ਹੈ". Andaaza kabhi nahi.
 """
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from . import data, intent as I, weather
 
@@ -70,6 +70,15 @@ RAIN_ADVICE_FROM = 50     # itne % se zyada barish ki sambhavna ho to spray na k
 
 def _num(x) -> str:
     return str(int(x)) if x is not None and float(x).is_integer() else str(x)
+
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def india_today() -> date:
+    """Aaj ki tareekh India ke time se. Server (Render) UTC pe chalta hai: raat 12 se subah 5:30 tak
+    UTC mein kal ki tareekh hoti hai, aur mausam ke din / "aaj ka bhaav" galat ho jaate the."""
+    return datetime.now(IST).date()
 
 
 def _day_phrase(iso: str, today: date, lang: str) -> str:
@@ -135,7 +144,7 @@ def _done(result, text, sources, kind, lang):
 # ---------------------------------------------------------------------------
 
 def build_answer(q: dict, today: date | None = None) -> dict:
-    today = today or date.today()
+    today = today or india_today()
     lang = q.get("lang", "pa")
     t = T[lang]
     result = {"answered": False, "kind": "", "text": "", "sources": [], "lang": lang}
