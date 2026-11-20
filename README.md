@@ -11,6 +11,7 @@ python -m uvicorn app.main:app --port 8000
 ```
 - Farmer page: http://localhost:8000
 - Admin (CSV upload, query log, text test): http://localhost:8000/admin
+- Phone call simulator (keypad phone, same call flow as Twilio): http://localhost:8000/phone
 
 ## Tests
 ```powershell
@@ -32,12 +33,15 @@ voice ─► speech.py (Google free ASR, pa-IN, n-best) ─► intent.py + norma
 | `app/answer.py` | Builds the Punjabi answer from DB rows; `check_grounded()` blocks any number not in the source rows |
 | `app/speech.py` | ASR + TTS providers (swap for Bhashini / AI4Bharat here only) |
 | `app/pipeline.py` | Joins the steps, picks the best ASR alternative, times each stage |
-| `app/phone.py` | Twilio call flow: record → answer → repeat; keypad menu after 2 failures |
+| `app/phone.py` | Call flow: record → answer → repeat; keypad menu after 2 failures. One `flow_*` logic, two outputs: TwiML for Twilio (`/voice/*`) and JSON for the simulator (`/api/phone-sim/*`) |
+| `app/phoneline.py` | Makes simulator audio sound like a real call (300–3400 Hz, 8 kHz, 8-bit mu-law) before ASR |
 | `app/main.py` | FastAPI routes |
 | `data/synonyms.json` | Crop/mandi words in Gurmukhi, Roman and Hindi. Edit this to teach the bot new words |
 
-## Phone calls (Twilio trial, free credit)
-Full step-by-step guide (Hinglish): [docs/TWILIO_SETUP.md](docs/TWILIO_SETUP.md). Short version:
+## Phone calls
+**Without a phone number:** open `/phone`. It runs the same call flow (greeting, beep, question, answer, keypad menu after two failed tries), and passes your voice through a phone-line filter first, so recognition is tested at real call quality.
+
+**Real calls (Twilio):** a Twilio trial account can no longer buy a number without upgrading, so this needs a paid account. Full step-by-step guide (Hinglish): [docs/TWILIO_SETUP.md](docs/TWILIO_SETUP.md). Short version:
 1. Create a Twilio trial account, get a number, verify your phone, and turn on India in Geo Permissions.
 2. Copy `.env.example` to `.env` and fill in your values.
 3. Run the server, then `cloudflared tunnel --url http://localhost:8000`, and put that URL in `PUBLIC_BASE_URL`.

@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="pa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ਕਿਸਾਨ ਹੈਲਪਲਾਈਨ · ਫ਼ੋਨ</title>
+<!--
+  PHONE SIMULATOR: keypad phone wali call ka poora flow, website par.
+  Server ka wahi flow chalta hai jo asli Twilio call mein (app/phone.py -> flow_*).
+  Steps server se aate hain: say (bolo), record (beep + suno), menu (keypad).
+  "Phone line quality" ON ho to awaaz 8 kHz phone jaisi bana ke ASR ko jaati hai (app/phoneline.py).
+-->
+<style>
+  :root {
+    --bg: #f7f3e8; --card: #ffffff; --ink: #1d2b1f; --muted: #5b6b5e;
+    --green: #1f5c2e; --green-2: #2e7d43; --wheat: #e9b949; --red: #c0392b; --line: #ddd5bf;
+    --body: #24302a; --body-2: #33413a; --lcd: #c9dbb2; --lcd-ink: #17240f; --key: #3d4b44; --key-ink: #f4f1e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121a14; --card: #1c271f; --ink: #f1efe6; --muted: #a9b5aa;
+      --green: #3d9a57; --green-2: #4caf68; --wheat: #f0c75e; --red: #e5604f; --line: #2d3a30;
+      --body: #0b100d; --body-2: #1a221d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121a14; --card: #1c271f; --ink: #f1efe6; --muted: #a9b5aa;
+    --green: #3d9a57; --green-2: #4caf68; --wheat: #f0c75e; --red: #e5604f; --line: #2d3a30;
+    --body: #0b100d; --body-2: #1a221d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans Gurmukhi", "Raavi", system-ui, sans-serif; font-size: 18px; line-height: 1.5;
+  }
+  header { background: var(--green); color: #fff; padding: 14px 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 24px; }
+  header p { margin: 2px 0 0; font-size: 15px; opacity: .9; }
+  main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 32px;
+         display: grid; grid-template-columns: 340px 1fr; gap: 28px; align-items: start; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+
+  /* ---- phone ---- */
+  .phone { background: var(--body); border-radius: 36px 36px 44px 44px; padding: 22px 20px 26px;
+           box-shadow: 0 10px 30px rgba(0,0,0,.25); max-width: 340px; width: 100%; margin: 0 auto; }
+  .speaker { width: 64px; height: 6px; border-radius: 3px; background: var(--body-2); margin: 0 auto 14px; }
+  .lcd { background: var(--lcd); color: var(--lcd-ink); border-radius: 10px; padding: 10px 12px;
+         min-height: 190px; display: flex; flex-direction: column; gap: 6px;
+         box-shadow: inset 0 2px 6px rgba(0,0,0,.25); }
+  .lcd-top { display: flex; justify-content: space-between; font-size: 13px; font-family: ui-monospace, monospace; }
+  .lcd-status { font-weight: 700; font-size: 17px; }
+  .lcd-text { font-size: 16px; line-height: 1.45; flex: 1; }
+  .lcd-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 15px; }
+  .lcd-menu[hidden] { display: none; }
+  .lcd-menu b { font-family: ui-monospace, monospace; }
+  .callrow { display: flex; justify-content: space-between; margin: 18px 6px 14px; }
+  .callbtn { width: 92px; height: 52px; border: 0; border-radius: 26px; font-size: 26px; color: #fff; cursor: pointer; }
+  .callbtn:disabled { opacity: .35; cursor: default; }
+  #dial { background: #2e9e4f; }
+  #hang { background: #c9372c; }
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .key { height: 54px; border: 0; border-radius: 14px; background: var(--key); color: var(--key-ink);
+         font-size: 24px; font-weight: 700; cursor: pointer; font-family: ui-monospace, monospace; }
+  .key:active { transform: scale(.96); }
+  .keys.armed .key { box-shadow: 0 0 0 2px var(--wheat); }
+  button:focus-visible { outline: 4px solid var(--wheat); outline-offset: 2px; }
+  .opts { margin: 16px auto 0; max-width: 340px; font-size: 15px; color: var(--muted);
+          display: flex; gap: 8px; align-items: flex-start; }
+  .opts input { margin-top: 5px; width: 18px; height: 18px; }
+
+  /* ---- log ---- */
+  .panel h2 { font-size: 20px; margin: 0 0 6px; }
+  .panel > p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+  .how { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px;
+         font-size: 15px; margin-bottom: 16px; }
+  .how ol { margin: 6px 0 0; padding-left: 22px; }
+  #log { display: flex; flex-direction: column; gap: 12px; }
+  .turn { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--wheat);
+          border-radius: 12px; padding: 12px 14px; font-size: 15px; }
+  .turn.fail { border-left-color: var(--red); }
+  .turn.sys { border-left-color: var(--line); color: var(--muted); }
+  .turn .who { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .5px; }
+  .turn .ans { font-size: 17px; margin: 4px 0; }
+  .turn .meta { font-size: 13px; color: var(--muted); }
+  .turn button { margin-top: 6px; font-size: 14px; padding: 4px 10px; border-radius: 8px;
+                 border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+  .empty { color: var(--muted); font-size: 15px; }
+  footer { text-align: center; font-size: 14px; color: var(--muted); padding: 0 16px 28px; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📞 ਕਿਸਾਨ ਹੈਲਪਲਾਈਨ: ਫ਼ੋਨ ਕਾਲ</h1>
+  <p>Keypad phone call simulator · same call flow as the real phone line</p>
+</header>
+
+<main>
+  <div>
+    <div class="phone" aria-label="Keypad phone">
+      <div class="speaker"></div>
+      <div class="lcd" aria-live="polite">
+        <div class="lcd-top"><span id="net">📶 2G</span><span id="clock">00:00</span></div>
+        <div class="lcd-status" id="status">ਕਾਲ ਕਰਨ ਲਈ ਹਰਾ ਬਟਨ ਦਬਾਓ</div>
+        <div class="lcd-text" id="lcdText">1800-KISAN</div>
+        <div class="lcd-menu" id="lcdMenu" hidden></div>
+      </div>
+      <div class="callrow">
+        <button class="callbtn" id="dial" aria-label="ਕਾਲ ਕਰੋ">📞</button>
+        <button class="callbtn" id="hang" aria-label="ਕਾਲ ਕੱਟੋ" disabled>✕</button>
+      </div>
+      <div class="keys" id="keys"></div>
+    </div>
+    <label class="opts"><input type="checkbox" id="lineq" checked>
+      <span>Phone line quality: your voice is cut to 8 kHz, 300–3400 Hz, 8-bit, like a real call, before speech recognition.</span></label>
+  </div>
+
+  <section class="panel">
+    <h2>Call log</h2>
+    <p>What the system heard, what it answered, which data row it used, and how long each step took.</p>
+    <div class="how">
+      <b>Try it</b>
+      <ol>
+        <li>Press 📞. Listen to the greeting.</li>
+        <li>After the beep, ask in Punjabi, e.g. “ਅੰਮ੍ਰਿਤਸਰ ਮੰਡੀ ਵਿੱਚ ਕਣਕ ਦਾ ਭਾਅ”.</li>
+        <li>Stay silent twice to reach the keypad menu, then press a number.</li>
+      </ol>
+    </div>
+    <div id="log"><p class="empty">No call yet.</p></div>
+  </section>
+</main>
+
+<footer><a href="/">ਵੈੱਬਸਾਈਟ</a> · <a href="/admin">admin</a></footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const statusEl = $("status"), lcdText = $("lcdText"), lcdMenu = $("lcdMenu"), keysEl = $("keys");
+
+// ---------- keypad ----------
+for (const k of ["1","2","3","4","5","6","7","8","9","*","0","#"]) {
+  const b = document.createElement("button");
+  b.className = "key"; b.textContent = k; b.setAttribute("aria-label", "ਬਟਨ " + k);
+  b.onclick = () => pressKey(k);
+  keysEl.appendChild(b);
+}
+
+// ---------- call state ----------
+// call = ek chalti call. Kat jaaye to naya object; purane kaam "alive()" check karke ruk jaate hain.
+let call = null;
+let clockTimer = null;
+let stopCurrent = null;        // jo abhi chal raha hai (audio / recording / menu) usse rokne ka function
+let digitWaiter = null;        // menu chal raha ho to button dabane par ye chalega
+const alive = (c) => call === c;
+
+function setStatus(s) { statusEl.textContent = s; }
+function setText(t) { lcdText.textContent = t; }
+
+function startClock() {
+  const t0 = Date.now();
+  clockTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    $("clock").textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  }, 500);
+}
+
+$("dial").onclick = () => startCall();
+$("hang").onclick = () => hangUp("ਕਾਲ ਕੱਟ ਦਿੱਤੀ");
+
+async function startCall() {
+  if (call) return;
+  const c = {};
+  call = c;
+  $("dial").disabled = true; $("hang").disabled = false;
+  $("log").innerHTML = "";
+  setStatus("☎ ਜੁੜ ਰਿਹਾ ਹੈ…"); setText("1800-KISAN");
+  try {
+    c.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: true, channelCount: 1 }
+    });
+  } catch (e) {
+    hangUp("ਮਾਈਕ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ");
+    return;
+  }
+  startClock();
+  logSys("Call connected");
+  try {
+    const r = await post("/api/phone-sim/start");
+    await runSteps(r.steps, c);
+  } catch (e) {
+    if (alive(c)) { logSys("Server error: " + e.message); hangUp("ਸਰਵਰ ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ"); }
+  }
+}
+
+function hangUp(msg) {
+  const c = call;
+  call = null;
+  if (stopCurrent) { stopCurrent(); stopCurrent = null; }
+  digitWaiter = null;
+  if (c && c.stream) c.stream.getTracks().forEach(t => t.stop());
+  clearInterval(clockTimer);
+  $("dial").disabled = false; $("hang").disabled = true;
+  keysEl.classList.remove("armed");
+  lcdMenu.hidden = true;
+  setStatus(msg || "ਕਾਲ ਖ਼ਤਮ");
+  setText("ਦੁਬਾਰਾ ਕਾਲ ਕਰਨ ਲਈ ਹਰਾ ਬਟਨ ਦਬਾਓ");
+  if (c) logSys("Call ended");
+}
+
+// ---------- steps: server batata hai aage kya karna hai ----------
+async function runSteps(steps, c) {
+  for (const s of steps) {
+    if (!alive(c)) return;
+    if (s.type === "say") {
+      setStatus("🔊 ਸੁਣੋ…"); setText(s.text);
+      await play(s.audio);
+    } else if (s.type === "record") {
+      const blob = await recordQuestion(c);
+      if (!alive(c) || !blob) return;
+      setStatus("⏳ ਭਾਅ ਲੱਭ ਰਹੇ ਹਾਂ…");
+      const form = new FormData();
+      form.append("audio", blob, "question.wav");
+      const r = await post(`/api/phone-sim/answer?tries=${s.tries}&phone_line=${$("lineq").checked}`, form);
+      if (!alive(c)) return;
+      logTurn("🗣 Spoken question", r);
+      return runSteps(r.steps, c);
+    } else if (s.type === "menu") {
+      const digit = await runMenu(s, c);
+      if (!alive(c)) return;
+      if (digit === null) {                       // koi button nahi dabaya
+        setStatus("🔊 ਸੁਣੋ…"); setText(s.timeout_say.text);
+        await play(s.timeout_say.audio);
+        hangUp("ਕਾਲ ਖ਼ਤਮ");
+        return;
+      }
+      setStatus("⏳ ਭਾਅ ਲੱਭ ਰਹੇ ਹਾਂ…");
+      const r = await post("/api/phone-sim/menu-choice", JSON.stringify({ digits: digit }), true);
+      if (!alive(c)) return;
+      logTurn("⌨ Keypad: pressed " + digit, r);
+      return runSteps(r.steps, c);
+    }
+  }
+}
+
+// Menu: options sunao, beech mein bhi button dabaa sakte hain (asli <Gather> jaisa).
+function runMenu(s, c) {
+  lcdMenu.innerHTML = s.options.map(o => `<span><b>${o.digit}</b> ${o.icon} ${o.pa}</span>`).join("");
+  lcdMenu.hidden = false;
+  keysEl.classList.add("armed");
+  setStatus("⌨ ਬਟਨ ਦਬਾ ਕੇ ਫ਼ਸਲ ਚੁਣੋ");
+  logSys("Speech failed twice: keypad menu");
+  return new Promise(async (resolve) => {
+    let done = false;
+    const finish = (d) => {
+      if (done) return;
+      done = true; digitWaiter = null;
+      if (stopCurrent) { stopCurrent(); stopCurrent = null; }
+      lcdMenu.hidden = true; keysEl.classList.remove("armed");
+      resolve(d);
+    };
+    digitWaiter = finish;
+    for (const p of s.say) {
+      if (done || !alive(c)) return finish(null);
+      setText(p.text);
+      await play(p.audio);
+    }
+    if (done || !alive(c)) return finish(null);
+    setText("ਬਟਨ ਦਬਾਓ…");
+    const t = setTimeout(() => finish(null), s.wait_seconds * 1000);
+    stopCurrent = () => clearTimeout(t);
+  });
+}
+
+function pressKey(k) {
+  tone(k);
+  if (digitWaiter) digitWaiter(k);
+}
+
+// ---------- audio ----------
+let audioCtx = null;
+const ctx = () => (audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)());
+
+function play(url) {
+  return new Promise((resolve) => {
+    const a = new Audio(url);
+    const end = () => { a.pause(); a.onended = a.onerror = null; resolve(); };
+    a.onended = end; a.onerror = end;
+    stopCurrent = end;
+    a.play().catch(end);
+  });
+}
+
+function tone(k) {         // keypad dabane ki awaaz (DTMF jaisi)
+  const rows = { "1":697,"2":697,"3":697,"4":770,"5":770,"6":770,"7":852,"8":852,"9":852,"*":941,"0":941,"#":941 };
+  const cols = { "1":1209,"4":1209,"7":1209,"*":1209,"2":1336,"5":1336,"8":1336,"0":1336,"3":1477,"6":1477,"9":1477,"#":1477 };
+  beep([rows[k], cols[k]], 0.15, 0.08);
+}
+
+function beep(freqs = [1000], seconds = 0.35, gain = 0.15) {
+  const a = ctx(), g = a.createGain();
+  g.gain.value = gain; g.connect(a.destination);
+  for (const f of freqs) {
+    const o = a.createOscillator();
+    o.frequency.value = f; o.connect(g); o.start(); o.stop(a.currentTime + seconds);
+  }
+  return new Promise(r => setTimeout(r, seconds * 1000 + 50));
+}
+
+// Beep ke baad record. Asli call jaisa: 2 second chup = sawaal khatam, 12 second max.
+async function recordQuestion(c) {
+  await beep();
+  if (!alive(c)) return null;
+  setStatus("🔴 ਬੋਲੋ…"); setText("ਫ਼ਸਲ ਅਤੇ ਮੰਡੀ ਦਾ ਨਾਮ ਲੈ ਕੇ ਪੁੱਛੋ");
+  return new Promise((resolve) => {
+    const a = ctx();
+    const source = a.createMediaStreamSource(c.stream);
+    const proc = a.createScriptProcessor(4096, 1, 1);
+    const chunks = [];
+    let spoke = false, silentSince = performance.now(), finished = false;
+    const started = performance.now();
+    const finish = (keep) => {
+      if (finished) return;
+      finished = true;
+      proc.disconnect(); source.disconnect();
+      stopCurrent = null;
+      resolve(keep ? encodeWav(chunks, a.sampleRate, 16000) : null);
+    };
+    stopCurrent = () => finish(false);
+    proc.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0);
+      chunks.push(new Float32Array(input));
+      let sum = 0;
+      for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+      const now = performance.now();
+      if (Math.sqrt(sum / input.length) > 0.02) { spoke = true; silentSince = now; }
+      if ((spoke && now - silentSince > 2000) || now - started > 12000 || (!spoke && now - started > 6000)) finish(true);
+    };
+    source.connect(proc);
+    proc.connect(a.destination);
+  });
+}
+
+function encodeWav(chunks, inRate, outRate) {
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const all = new Float32Array(total);
+  let off = 0;
+  for (const c of chunks) { all.set(c, off); off += c.length; }
+  const ratio = inRate / outRate, n = Math.floor(total / ratio);
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, outRate, true); v.setUint32(28, outRate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const s = Math.max(-1, Math.min(1, all[Math.floor(i * ratio)]));
+    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+// ---------- server ----------
+async function post(url, body, json) {
+  const r = await fetch(url, { method: "POST", body,
+    headers: json ? { "Content-Type": "application/json" } : undefined });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+// ---------- call log ----------
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+function logSys(text) {
+  const d = document.createElement("div");
+  d.className = "turn sys"; d.textContent = text;
+  $("log").appendChild(d);
+}
+
+function logTurn(label, r) {
+  const res = r.result || {};
+  const d = document.createElement("div");
+  const failed = !res.answered;
+  d.className = "turn" + (failed ? " fail" : "");
+  const t = res.timings || {};
+  const parts = [];
+  if (t.asr_ms != null) parts.push("hear " + t.asr_ms + " ms");
+  if (t.understand_ms != null) parts.push("understand " + t.understand_ms + " ms");
+  if (t.answer_ms != null) parts.push("data " + t.answer_ms + " ms");
+  if (t.tts_ms != null) parts.push("voice " + t.tts_ms + " ms");
+  const total = t.total_ms != null ? `⏱ ${(t.total_ms / 1000).toFixed(1)} s total · ` : "";
+  const src = (res.sources || []).map(s => `${s.market} / ${s.commodity} / ${s.date}`).join("; ");
+  const kind = { no_speech: "No speech heard", not_understood: "Not understood" }[res.kind];
+  d.innerHTML = `<div class="who">${esc(label)}</div>
+    ${res.heard && !label.startsWith("⌨") ? `<div>Heard: <b>${esc(res.heard)}</b></div>` : ""}
+    ${kind ? `<div>${kind}: counts as a failed try</div>` : ""}
+    <div class="ans">${esc(res.text)}</div>
+    <div class="meta">${total}${parts.join(" · ")}${src ? "<br>Source row: " + esc(src) : ""}</div>`;
+  if (r.line_audio) {
+    const b = document.createElement("button");
+    b.textContent = "▶ Hear your voice as the phone line sent it";
+    b.onclick = () => new Audio(r.line_audio).play();
+    d.appendChild(b);
+  }
+  $("log").appendChild(d);
+  d.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+</script>
+</body>
+</html>

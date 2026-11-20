@@ -4,6 +4,7 @@ WEB SERVER (FastAPI): website, admin panel aur phone call ke saare URLs yahan ha
 Chalaao:  python -m uvicorn app.main:app --port 8000
 Website:  http://localhost:8000        (kisan wali screen)
 Admin:    http://localhost:8000/admin  (CSV upload + query log)
+Phone:    http://localhost:8000/phone  (keypad phone simulator: poora call flow, bina Twilio ke)
 """
 import os
 import re
@@ -43,7 +44,7 @@ def startup():
     intent.refresh()
 
     def warm():
-        for p in FIXED_PHRASES:
+        for p in FIXED_PHRASES + [phone.menu_options_text()]:
             try:
                 speech.tts_path(p)
             except Exception:
@@ -137,6 +138,12 @@ def log():
 @app.get("/")
 def home():
     return FileResponse(ROOT / "static" / "index.html")
+
+
+@app.get("/phone")
+def phone_simulator():
+    """Keypad phone simulator: asli call jaisa flow, bina Twilio number ke."""
+    return FileResponse(ROOT / "static" / "phone.html")
 
 
 @app.get("/admin")
