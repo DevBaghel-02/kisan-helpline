@@ -387,13 +387,13 @@ function logTurn(label, r) {
   if (t.answer_ms != null) parts.push("data " + t.answer_ms + " ms");
   if (t.tts_ms != null) parts.push("voice " + t.tts_ms + " ms");
   const total = t.total_ms != null ? `⏱ ${(t.total_ms / 1000).toFixed(1)} s total · ` : "";
-  const src = (res.sources || []).map(s => `${s.market} / ${s.commodity} / ${s.date}`).join("; ");
+  const src = (res.sources || []).map(s => s.label || `${s.market} / ${s.commodity} / ${s.date}`).join("; ");
   const kind = { no_speech: "No speech heard", not_understood: "Not understood" }[res.kind];
   d.innerHTML = `<div class="who">${esc(label)}</div>
     ${res.heard && !label.startsWith("⌨") ? `<div>Heard: <b>${esc(res.heard)}</b></div>` : ""}
     ${kind ? `<div>${kind}: counts as a failed try</div>` : ""}
     <div class="ans">${esc(res.text)}</div>
-    <div class="meta">${total}${parts.join(" · ")}${src ? "<br>Source row: " + esc(src) : ""}</div>`;
+    <div class="meta">${total}${parts.join(" · ")}${src ? "<br>Source: " + esc(src) : ""}</div>`;
   if (r.line_audio) {
     const b = document.createElement("button");
     b.textContent = "▶ Hear your voice as the phone line sent it";

@@ -113,8 +113,15 @@ class Simulator(unittest.TestCase):
         with mock.patch.object(pipeline, "ask", return_value=FAKE_ANSWER):
             ok = self.client.post("/api/phone-sim/menu-choice", json={"digits": "1"}).json()
         self.assertEqual(ok["steps"][0]["type"], "say")
-        bad = self.client.post("/api/phone-sim/menu-choice", json={"digits": "0"}).json()
+        bad = self.client.post("/api/phone-sim/menu-choice", json={"digits": "#"}).json()
         self.assertEqual(bad["steps"][0]["type"], "menu")
+
+    def test_keypad_zero_is_weather(self):
+        with mock.patch.object(pipeline, "ask", return_value=FAKE_ANSWER) as ask:
+            self.client.post("/api/phone-sim/menu-choice", json={"digits": "0"})
+        self.assertIn("ਮੌਸਮ", ask.call_args.kwargs["text"])
+        menu = phone._sim_json([("menu", None)])["steps"][0]
+        self.assertIn(0, [o["digit"] for o in menu["options"]])
 
     def test_same_flow_as_twilio(self):
         """Simulator aur asli call ek hi flow function use karte hain."""

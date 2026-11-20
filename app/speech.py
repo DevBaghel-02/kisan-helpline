@@ -60,13 +60,36 @@ def _one_sentence(text: str, lang: str) -> bytes:
     return path.read_bytes()
 
 
-def tts_path(text: str, lang: str = "pa") -> Path:
+def transcribe_multi(wav_bytes: bytes, languages=("pa-IN", "hi-IN")) -> dict[str, list[dict]]:
+    """
+    Ek hi awaaz ko Punjabi aur Hindi dono ASR mein EK SAATH (parallel) bhejo -> time utna hi lagta hai.
+    Kisan Hindi mein bole to Hindi ASR behtar likhta hai; pipeline.py dono mein se behtar chunta hai.
+    Ek language fail ho jaaye to doosri se kaam chala lo; dono fail -> ASRError.
+    """
+    with ThreadPoolExecutor(max_workers=len(languages)) as pool:
+        futures = {lang: pool.submit(transcribe, wav_bytes, lang) for lang in languages}
+    out, errors = {}, []
+    for lang, f in futures.items():
+        try:
+            out[lang] = f.result()
+        except ASRError as e:
+            errors.append(e)
+    if not out:
+        raise errors[0]
+    return out
+
+
+def tts_path(text: str, lang: str | None = None) -> Path:
     """
     Text ki MP3 file banao (ya cache se do). File ka path wapas karo.
+    lang na diya ho to text se pehchaano: Devanagari -> Hindi awaaz, baaki -> Punjabi.
     SPEED TRICK: lamba jawab "।" pe sentences mein todo, har sentence ki awaaz EK SAATH
     (parallel threads mein) banao, phir MP3 tukde jod do. MP3 frames seedhe jod sakte hain.
     2 sentence ka jawab ~2.2s ki jagah ~1.3s mein ban jaata hai.
     """
+    if lang is None:
+        devanagari = sum("ऀ" <= ch <= "ॿ" for ch in text)
+        lang = "hi" if devanagari > len(text) / 4 else "pa"
     path = _cache_file(text, lang)
     if path.exists():
         return path

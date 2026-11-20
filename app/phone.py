@@ -67,8 +67,12 @@ def menu_crops():
     return [(k, v) for k, v in intent.crop_info.items() if v["db"]][:9]
 
 
+WEATHER_DIGIT = "0"     # keypad menu: 0 dabao -> aaj ka mausam
+
+
 def menu_options_text() -> str:
-    return " ".join(f"{v['pa']} ਲਈ {i} ਦਬਾਓ।" for i, (k, v) in enumerate(menu_crops(), start=1))
+    crops = " ".join(f"{v['pa']} ਲਈ {i} ਦਬਾਓ।" for i, (k, v) in enumerate(menu_crops(), start=1))
+    return crops + f" ਮੌਸਮ ਲਈ {WEATHER_DIGIT} ਦਬਾਓ।"
 
 
 def flow_incoming():
@@ -99,6 +103,9 @@ def flow_answer(result: dict, tries: int):
 def flow_menu_choice(digits: str, channel: str):
     """Button dabaya -> us fasal ka bhaav. Galat button -> menu dobara. Returns (steps, result)."""
     crops = menu_crops()
+    if digits == WEATHER_DIGIT:
+        result = pipeline.ask(text="ਅੱਜ ਦਾ ਮੌਸਮ", channel=channel)
+        return [("say", result["text"]), ("say", PROMPTS["more"]), ("record", 0)], result
     if not digits.isdigit() or not 1 <= int(digits) <= len(crops):
         return [("menu", None)], None
     key, info = crops[int(digits) - 1]
@@ -217,6 +224,7 @@ def _sim_json(steps, result: dict | None = None, line_audio: bytes | None = None
         elif kind == "menu":
             options = [{"digit": i, "pa": v["pa"], "icon": v["icon"]}
                        for i, (k, v) in enumerate(menu_crops(), start=1)]
+            options.append({"digit": int(WEATHER_DIGIT), "pa": "ਮੌਸਮ", "icon": "🌦️"})
             out.append({"type": "menu", "wait_seconds": MENU_WAIT_SECONDS,
                         "say": [{"text": t, "audio": _audio_url(t)}
                                 for t in (PROMPTS["menu_intro"], menu_options_text())],
@@ -225,7 +233,7 @@ def _sim_json(steps, result: dict | None = None, line_audio: bytes | None = None
     body = {"steps": out}
     if result is not None:
         body["result"] = {k: result.get(k) for k in
-                          ("heard", "alternatives", "kind", "answered", "text", "sources", "timings")}
+                          ("heard", "alternatives", "kind", "answered", "text", "sources", "timings", "lang")}
     if line_audio is not None:
         # "Phone line ne aapki awaaz kaise suni" - website par sunne ke liye (disk par save nahi hoti)
         body["line_audio"] = "data:audio/wav;base64," + base64.b64encode(line_audio).decode()

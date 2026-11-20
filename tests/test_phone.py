@@ -69,7 +69,7 @@ class Phone(unittest.TestCase):
     def test_keypad_choice(self):
         r = self.post_signed("/voice/menu-choice", {"Digits": "1"})
         self.assertIn("<Play>", r.text)
-        bad = self.post_signed("/voice/menu-choice", {"Digits": "0"})
+        bad = self.post_signed("/voice/menu-choice", {"Digits": "#"})
         self.assertIn("/voice/menu", bad.text)
 
     def test_recording_url_must_be_twilio(self):

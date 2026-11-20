@@ -20,13 +20,38 @@ from .normalise import Matcher, skeleton
 
 _MANDI_WORDS = {skeleton(w) for w in ["ਮੰਡੀ", "ਮੰਡੀਓਂ", "ਮੰਡੀਚ", "mandi", "मंडी"]}
 
-SYN = json.loads((Path(__file__).resolve().parent.parent / "data" / "synonyms.json").read_text(encoding="utf-8"))
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+SYN = json.loads((DATA_DIR / "synonyms.json").read_text(encoding="utf-8"))
+SCHEMES = json.loads((DATA_DIR / "schemes.json").read_text(encoding="utf-8"))["schemes"]
 
-crop_info: dict[str, dict] = {}     # "wheat" -> {"pa": "ਕਣਕ", "icon": ..., "db": ["Wheat"]}
-market_info: dict[str, dict] = {}   # "Amritsar" -> {"pa": "ਅੰਮ੍ਰਿਤਸਰ"}
+crop_info: dict[str, dict] = {}     # "wheat" -> {"pa": "ਕਣਕ", "hi": "गेहूं", "icon": ..., "db": ["Wheat"]}
+market_info: dict[str, dict] = {}   # "Amritsar" -> {"pa": "ਅੰਮ੍ਰਿਤਸਰ", "hi": "अमृतसर", "lat": .., "lon": ..}
 _crop_matcher = _market_matcher = None
 _intent_matcher = Matcher(SYN["intents"])
 _time_matcher = Matcher(SYN["time"])
+_scheme_matcher = Matcher({k: s["words"] for k, s in SCHEMES.items()})
+
+
+# Punjabi ASR Hindi awaaz ko bhi Gurmukhi mein likh deta hai: "ਅੰਮ੍ਰਿਤਸਰ ਮੰਡੀ ਮੇਂ ਗੇਹੂੰ ਕਾ ਭਾਓ ਕਿਆ ਹੈ".
+# Ye shabd sirf Hindi mein bolte hain (Punjabi mein "ਵਿੱਚ", "ਦਾ", "ਕੀ"). Inse pata chalta hai kisan Hindi bol raha hai.
+_HINDI_IN_GURMUKHI = {skeleton(w) for w in ["ਮੇਂ", "ਕਾ", "ਕਿਆ", "ਕਯਾ", "ਹੋਗੀ", "ਹੋਗਾ", "ਬਤਾਓ", "ਬਤਾਈਏ",
+                                             "ਕਿਤਨਾ", "ਕਿਤਨੇ", "ਹੈਂ", "ਮੁਝੇ", "ਆਜ"]}
+_PUNJABI_ONLY = {skeleton(w) for w in ["ਦਾ", "ਦੀ", "ਦੇ", "ਵਿੱਚ", "ਵਿਚ", "ਦੱਸੋ", "ਕਿੰਨਾ", "ਨੂੰ", "ਅੱਜ", "ਪਵੇਗਾ"]}
+
+
+def detect_lang(text: str) -> str:
+    """
+    Kis bhasha mein jawab dein? Devanagari mein likha -> Hindi. Gurmukhi mein Hindi ke shabd
+    (ਮੇਂ, ਕਾ, ਕਿਆ) zyada hon Punjabi ke shabdon (ਵਿੱਚ, ਦਾ) se -> Hindi. Baaki sab Punjabi (humara main user).
+    """
+    devanagari = sum("ऀ" <= ch <= "ॿ" for ch in text)
+    gurmukhi = sum("਀" <= ch <= "੿" for ch in text)
+    if devanagari > gurmukhi:
+        return "hi"
+    tokens = skeleton(text).split()
+    hindi = sum(t in _HINDI_IN_GURMUKHI for t in tokens)
+    punjabi = sum(t in _PUNJABI_ONLY for t in tokens)
+    return "hi" if hindi > punjabi else "pa"
 
 
 def _db_names_for(crop: dict, commodities: list[str]) -> list[str]:
@@ -50,23 +75,26 @@ def refresh():
     covered = set()
     for key, c in SYN["crops"].items():
         db_names = _db_names_for(c, commodities)
-        crop_info[key] = {"pa": c["pa"], "pa_of": c.get("pa_of", c["pa"]), "icon": c.get("icon", "🌿"), "db": db_names}
+        crop_info[key] = {"pa": c["pa"], "pa_of": c.get("pa_of", c["pa"]), "hi": c.get("hi", c["pa"]),
+                          "icon": c.get("icon", "🌿"), "db": db_names}
         crop_words[key] = c["words"]
         covered.update(db_names)
     for c in commodities:                       # nayi fasal jo synonyms mein nahi hai
         if c not in covered:
             base = c.split("(")[0].strip()
-            crop_info[c] = {"pa": c, "pa_of": c, "icon": "🌿", "db": [c]}
+            crop_info[c] = {"pa": c, "pa_of": c, "hi": c, "icon": "🌿", "db": [c]}
             crop_words[c] = [c, base]
 
     # Jo mandiyan synonyms.json mein hain, unhe bhi pehchaano chahe data na ho.
     # Warna kisan "ਬਠਿੰਡਾ" bole aur hum na pehchaanein, to galti se doosri mandi ka bhaa bata denge.
     for m, info in SYN["markets"].items():
-        market_info[m] = {"pa": info["pa"], "has_data": m in markets}
-        market_words[m] = info["words"] + [m]
+        market_info[m] = {"pa": info["pa"], "hi": info.get("hi", m), "has_data": m in markets}
+        if "lat" in info:
+            market_info[m].update(lat=info["lat"], lon=info["lon"])
+        market_words[m] = info["words"] + [m] + ([info["hi"]] if "hi" in info else [])
     for m in markets:                           # nayi mandi jo synonyms mein nahi hai
         if m not in market_info:
-            market_info[m] = {"pa": m, "has_data": True}
+            market_info[m] = {"pa": m, "hi": m, "has_data": True}
             market_words[m] = [m]
 
     _crop_matcher = Matcher(crop_words)
@@ -87,9 +115,22 @@ def understand(text: str) -> dict:
         crop_keys.remove("paddy")
     crop_keys = crop_keys[:2]                    # ek sawaal mein max 2 fasalein
 
-    intent = intents[0][0] if intents else None
-    if intent is None and crop_keys:
+    schemes = _scheme_matcher.find(text)
+
+    # Kaunsa sawaal hai? Priority: scheme ka naam > mausam > bhaav.
+    # "ਮੰਡੀ" bhaav wala shabd bhi hai, isliye "ਅੰਮ੍ਰਿਤਸਰ ਮੰਡੀ ਦਾ ਮੌਸਮ" ko mausam hi maano.
+    intent_keys = {k for k, _, _ in intents}
+    real_price_word = any(k == "price" and p not in _MANDI_WORDS for k, _, p in intents)
+    if schemes and not crop_keys:
+        intent = "scheme"
+    elif "weather" in intent_keys and not (crop_keys and real_price_word):
+        intent = "weather"
+    elif "scheme" in intent_keys and not crop_keys:
+        intent = "scheme"
+    elif crop_keys or "price" in intent_keys:
         intent = "price"                         # sirf fasal ka naam bola -> zyaadatar bhaa hi poochte hain
+    else:
+        intent = None
 
     # Anjaan mandi: "ਸਮਰਾਲਾ ਮੰਡੀ" jaisa naam jo humari list mein nahi hai.
     # "ਮੰਡੀ" se pehle wala shabd utha lo, taaki bot bole "us mandi ka data nahi" -
@@ -109,9 +150,12 @@ def understand(text: str) -> dict:
         "market": markets[0][0] if markets else None,
         "unknown_market": unknown_market,
         "day": times[0][0] if times else None,
+        "scheme": schemes[0][0] if schemes else None,
+        "lang": detect_lang(text),
         "evidence": {                            # debugging/viva ke liye: kaunsa shabd suna gaya
             "crops": [(k, round(s, 2), p) for k, s, p in crops],
             "markets": [(k, round(s, 2), p) for k, s, p in markets],
             "intents": [(k, round(s, 2), p) for k, s, p in intents],
+            "schemes": [(k, round(s, 2), p) for k, s, p in schemes],
         },
     }

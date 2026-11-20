@@ -79,6 +79,7 @@ def crops():
     return {
         "crops": [{"key": k, "pa": v["pa"], "icon": v["icon"]} for k, v in intent.crop_info.items() if v["db"]],
         "markets": [{"name": m, "pa": v["pa"]} for m, v in intent.market_info.items() if v["has_data"]],
+        "schemes": [{"key": k, "pa": s["name"]["pa"], "icon": s["icon"]} for k, s in intent.SCHEMES.items()],
     }
 
 

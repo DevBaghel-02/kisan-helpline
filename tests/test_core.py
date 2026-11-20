@@ -39,7 +39,7 @@ class Core(unittest.TestCase):
         self.assertEqual(intent.understand("ਬਾਸਮਤੀ ਝੋਨੇ ਦਾ ਰੇਟ")["crops"], ["basmati"])
 
     def test_never_invents_numbers(self):
-        for text in ["ਸੇਬ ਦਾ ਭਾਅ", "ਬਰਨਾਲਾ ਮੰਡੀ ਕਣਕ", "ਸਮਰਾਲਾ ਮੰਡੀ ਵਿੱਚ ਝੋਨਾ", "ਹੈਲੋ ਜੀ", "ਅੱਜ ਮੌਸਮ ਕਿਵੇਂ ਹੈ"]:
+        for text in ["ਸੇਬ ਦਾ ਭਾਅ", "ਬਰਨਾਲਾ ਮੰਡੀ ਕਣਕ", "ਸਮਰਾਲਾ ਮੰਡੀ ਵਿੱਚ ਝੋਨਾ", "ਹੈਲੋ ਜੀ", "सेब का भाव"]:
             a = ask(text)
             self.assertFalse(a["answered"], text)
             self.assertEqual(re.findall(r"\d", a["text"]), [], f"number aa gaya: {text} -> {a['text']}")

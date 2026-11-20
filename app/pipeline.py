@@ -13,6 +13,26 @@ import time
 from . import answer, data, intent, speech
 
 
+def _score(q: dict) -> int:
+    return 2 * bool(q["crops"] or q.get("scheme")) + bool(q["market"] or q["unknown_market"]) + bool(q["intent"])
+
+
+def _pick_language(by_lang: dict[str, list[dict]]) -> list[dict]:
+    """
+    Punjabi aur Hindi ASR dono ne kuch likha. Kiski baat zyada samajh aayi? (score), barabar ho to
+    kis ASR ko zyada bharosa hai (confidence), wo bhi barabar ho to Punjabi (humara main user).
+    """
+    def rank(item):
+        lang, alts = item
+        best = max((_score(intent.understand(a["text"])) for a in alts), default=-1)
+        conf = alts[0].get("confidence") or 0 if alts else 0
+        return (best, round(conf, 2), lang == "pa-IN")
+    candidates = [(lang, alts) for lang, alts in by_lang.items() if alts]
+    if not candidates:
+        return []
+    return max(candidates, key=rank)[1]
+
+
 def _pick_best(alternatives: list[dict]) -> tuple[str, dict]:
     """
     ASR ke n-best alternatives mein se wo chuno jisse sabse zyada samajh aaye.
@@ -23,7 +43,7 @@ def _pick_best(alternatives: list[dict]) -> tuple[str, dict]:
     best_text, best_q, best_score = alternatives[0]["text"], None, -1
     for alt in alternatives:
         q = intent.understand(alt["text"])
-        score = 2 * bool(q["crops"]) + bool(q["market"] or q["unknown_market"]) + bool(q["intent"])
+        score = _score(q)
         if score > best_score:
             best_text, best_q, best_score = alt["text"], q, score
     return best_text, best_q
@@ -36,7 +56,7 @@ def ask(*, text: str | None = None, wav: bytes | None = None, channel: str = "we
     alternatives = []
     if wav is not None:
         try:
-            alternatives = speech.transcribe(wav)
+            alternatives = _pick_language(speech.transcribe_multi(wav))
         except speech.ASRError as e:
             return {"ok": False, "error": str(e), "heard": None}
         timings["asr_ms"] = int((time.perf_counter() - t0) * 1000)
@@ -56,7 +76,7 @@ def ask(*, text: str | None = None, wav: bytes | None = None, channel: str = "we
     timings["answer_ms"] = int((time.perf_counter() - t2) * 1000)
 
     out = {"ok": True, "heard": heard, "alternatives": [x["text"] for x in alternatives],
-           "understood": {k: q[k] for k in ("intent", "crops", "market", "unknown_market", "day")},
+           "understood": {k: q[k] for k in ("intent", "crops", "market", "unknown_market", "day", "scheme", "lang")},
            "evidence": q["evidence"], **a}
     return _finish(out, timings, t0, channel, speak)
 
@@ -64,7 +84,7 @@ def ask(*, text: str | None = None, wav: bytes | None = None, channel: str = "we
 def _finish(out, timings, t0, channel, speak):
     if speak:
         t3 = time.perf_counter()
-        out["audio_file"] = speech.tts_path(out["text"]).name
+        out["audio_file"] = speech.tts_path(out["text"], out.get("lang")).name
         timings["tts_ms"] = int((time.perf_counter() - t3) * 1000)
     timings["total_ms"] = int((time.perf_counter() - t0) * 1000)
     out["timings"] = timings

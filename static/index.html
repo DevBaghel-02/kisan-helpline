@@ -103,6 +103,12 @@
 
   <h2>ਜਾਂ ਫ਼ਸਲ ਦੀ ਫ਼ੋਟੋ ਦਬਾਓ</h2>
   <div class="grid" id="crops"></div>
+
+  <h2>ਮੌਸਮ</h2>
+  <div class="grid" id="weather"></div>
+
+  <h2>ਸਰਕਾਰੀ ਸਕੀਮਾਂ</h2>
+  <div class="grid" id="schemes"></div>
 </main>
 
 <footer>ਬਿਨਾਂ ਸਮਾਰਟਫ਼ੋਨ ਵਾਲੇ ਕਿਸਾਨ ਫ਼ੋਨ ਕਾਲ ਰਾਹੀਂ ਵੀ ਪੁੱਛ ਸਕਦੇ ਹਨ · <a href="/phone">📞 ਫ਼ੋਨ ਕਾਲ ਅਜ਼ਮਾਓ</a> · <a href="/admin">admin</a></footer>
@@ -130,7 +136,7 @@ function showAnswer(res) {
   if (t.tts_ms != null) parts.push("ਆਵਾਜ਼ " + t.tts_ms + "ms");
   let meta = "⏱ ਕੁੱਲ " + (t.total_ms / 1000).toFixed(1) + "s · " + parts.join(" · ");
   if (res.sources && res.sources.length) {
-    meta += " · ਸਰੋਤ: " + res.sources.map(s => `${s.market} / ${s.commodity} / ${s.date}`).join("; ");
+    meta += " · ਸਰੋਤ: " + res.sources.map(s => s.label || `${s.market} / ${s.commodity} / ${s.date}`).join("; ");
   }
   $("meta").textContent = meta;
   if (res.audio_file) {
@@ -162,6 +168,24 @@ async function loadOptions() {
     b.onclick = () => askText(`${selectedMarket ? selectedMarket.pa + " ਮੰਡੀ " : ""}${c.pa} ਦਾ ਭਾਅ`);
     $("crops").appendChild(b);
   }
+  // Mausam: chuni hui mandi ka, warna Amritsar ka
+  const tile = (icon, label, onClick) => {
+    const b = document.createElement("button");
+    b.className = "tile";
+    b.innerHTML = `<span class="icon" aria-hidden="true">${icon}</span><span>${label}</span>`;
+    b.onclick = onClick;
+    return b;
+  };
+  $("weather").innerHTML = "";
+  const place = () => (selectedMarket ? selectedMarket.pa + " " : "");
+  $("weather").appendChild(tile("☀️", "ਅੱਜ", () => askText(place() + "ਅੱਜ ਦਾ ਮੌਸਮ")));
+  $("weather").appendChild(tile("🌦️", "ਭਲਕੇ", () => askText(place() + "ਭਲਕੇ ਦਾ ਮੌਸਮ")));
+  $("weather").appendChild(tile("🌧️", "ਪਰਸੋਂ", () => askText(place() + "ਪਰਸੋਂ ਦਾ ਮੌਸਮ")));
+  $("schemes").innerHTML = "";
+  for (const s of res.schemes || []) {
+    $("schemes").appendChild(tile(s.icon, s.pa, () => askText(s.pa)));
+  }
+
   $("markets").innerHTML = "";
   for (const m of res.markets) {
     const b = document.createElement("button");
