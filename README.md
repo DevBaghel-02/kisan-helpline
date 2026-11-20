@@ -1,6 +1,11 @@
 # Kisan Helpline: Punjabi voice helpline for farmers (Code Fuzion 2026, H6)
 
-A farmer asks for a mandi price in Punjabi (or Hindi) by voice, on a **keypad phone call** or on a simple website, and hears the answer in Punjabi. Every number in an answer comes from the price database; when the data isn't there, the bot says so instead of guessing.
+A farmer asks by voice, on a **keypad phone call** or on a simple website, and hears the answer in Punjabi (or in Hindi, if they asked in Hindi):
+- **Mandi prices** from the price database (judges' CSV / Agmarknet)
+- **Weather** for today, tomorrow and the day after, from Open-Meteo
+- **Government schemes**: PM-KISAN, crop insurance, Kisan Credit Card, stubble-machine subsidy
+
+Every number in an answer comes from one of these sources and is checked before it is spoken; when the data isn't there, the bot says so instead of guessing.
 
 > `data/sample_prices.csv` contains **made-up sample prices for testing only**. Real prices come from the judges' dataset (upload it at `/admin`) or from data.gov.in (Agmarknet).
 
@@ -35,6 +40,8 @@ voice ─► speech.py (Google free ASR, pa-IN, n-best) ─► intent.py + norma
 | `app/pipeline.py` | Joins the steps, picks the best ASR alternative, times each stage |
 | `app/phone.py` | Call flow: record → answer → repeat; keypad menu after 2 failures. One `flow_*` logic, two outputs: TwiML for Twilio (`/voice/*`) and JSON for the simulator (`/api/phone-sim/*`) |
 | `app/phoneline.py` | Makes simulator audio sound like a real call (300–3400 Hz, 8 kHz, 8-bit mu-law) before ASR |
+| `app/weather.py` | Open-Meteo forecast per mandi location (today / tomorrow / day after), cached 30 min |
+| `data/schemes.json` | Government schemes: Punjabi + Hindi answers, the numbers they contain, source links, date checked |
 | `app/main.py` | FastAPI routes |
 | `data/synonyms.json` | Crop/mandi words in Gurmukhi, Roman and Hindi. Edit this to teach the bot new words |
 
@@ -53,7 +60,10 @@ Security: `/voice/*` checks the Twilio signature, recordings are fetched only fr
 - Build command: `pip install -r requirements.txt`
 - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
+Or use the blueprint: Render dashboard → New → Blueprint → pick this repo. `render.yaml` sets everything, including a random `ADMIN_TOKEN` (find it under the service's Environment tab). On the free plan the server sleeps after 15 idle minutes, and an uploaded CSV is lost on restart.
+
 ## Known limits (be honest in the demo)
 - ASR uses Google's free, unofficial endpoint. It is good but rate-limited; Bhashini is the planned replacement.
 - On 8 kHz phone audio, place names are sometimes misheard (e.g. "ਤਰਨ ਤਾਰਨ" → "17 17"). The bot then lists prices from several mandis with their names, so it never pins a price to the wrong mandi.
-- Weather and schemes are not in the MVP yet; the bot says "coming soon".
+- Schemes: four only (PM-KISAN, PMFBY, KCC, Punjab CRM subsidy), updated by hand in `data/schemes.json` (each has source links and a `checked` date).
+- Hindi speech is sometimes answered in Punjabi when the sentence has no Hindi-only words.
