@@ -66,6 +66,11 @@ Or use the blueprint: Render dashboard → New → Blueprint → pick this repo.
 
 Weather: Render's free IP is shared, so Open-Meteo sometimes answers 429 (too many requests); the bot then uses wttr.in, and the source label shows which one answered.
 
+## Team docs
+- [docs/SAMJHO.md](docs/SAMJHO.md): full explanation in Hinglish
+- [docs/PITCH.md](docs/PITCH.md): pitch, demo steps, Q&A
+- [docs/CHEATSHEET.html](docs/CHEATSHEET.html): one-page cheat sheet (open in a browser)
+
 ## Known limits (be honest in the demo)
 - ASR uses Google's free, unofficial endpoint. It is good but rate-limited; Bhashini is the planned replacement.
 - On 8 kHz phone audio, place names are sometimes misheard (e.g. "ਤਰਨ ਤਾਰਨ" → "17 17"). The bot then lists prices from several mandis with their names, so it never pins a price to the wrong mandi.

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kisan Helpline Cheat Sheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: single readable column, sticky jump-nav, sections as plain blocks; one "say this" card style for judge answers */
+:root{
+  --bg:#f7f6f0; --surface:#ffffff; --fg:#1d2318; --muted:#5d6555; --line:#dcdccf;
+  --accent:#2f6b2a; --wheat:#b5822a; --say-bg:#eef4e8; --warn:#9a4a12;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141712; --surface:#1c201a; --fg:#e8eadf; --muted:#a3a995; --line:#30362b;
+  --accent:#8fcf7f; --wheat:#e0b35c; --say-bg:#1f2a1b; --warn:#f0a46a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141712; --surface:#1c201a; --fg:#e8eadf; --muted:#a3a995; --line:#30362b;
+  --accent:#8fcf7f; --wheat:#e0b35c; --say-bg:#1f2a1b; --warn:#f0a46a; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px}
+header h1{font:700 1.7rem/1.15 var(--display);margin:0 0 4px;text-wrap:balance}
+header p{margin:0;color:var(--muted)}
+.links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font:13px var(--mono)}
+a{color:var(--accent)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);margin:16px calc(-1 * max(16px,env(safe-area-inset-left,0px))) 0;padding:8px max(16px,env(safe-area-inset-left,0px));display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+nav a{flex:none;font:600 12px var(--body);text-decoration:none;padding:5px 10px;border:1px solid var(--line);border-radius:99px;color:var(--fg)}
+nav a:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{padding-top:26px;scroll-margin-top:60px}
+h2{font:700 1.2rem var(--display);margin:0 0 10px;display:flex;align-items:baseline;gap:8px}
+h2 small{font:400 12px var(--body);color:var(--muted)}
+h3{font:600 14px var(--body);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+p{margin:0 0 8px}
+.say{background:var(--say-bg);border-left:3px solid var(--accent);padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0}
+.say b.tag{display:block;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+.tbl{overflow-x:auto;margin:6px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+code,.mono{font-family:var(--mono);font-size:.88em}
+pre{font:12.5px/1.5 var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow-x:auto;margin:6px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:8px 0}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px}
+.stat b{display:block;font:700 1.5rem var(--display);color:var(--wheat);font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+ol,ul{margin:4px 0 8px;padding-left:20px}
+li{margin:3px 0}
+.warn{color:var(--warn);font-weight:600}
+.qa{display:grid;gap:8px}
+.qa div{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:9px 11px}
+.qa b{display:block;margin-bottom:2px}
+</style></head><body>
+
+<div class="wrap">
+<header>
+  <h1>Kisan Helpline Cheat Sheet</h1>
+  <p>Code Fuzion 2026 · H6 · Punjabi voice helpline for farmers</p>
+  <div class="links">
+    <a href="https://kisan-helpline.onrender.com" target="_blank" rel="noopener">kisan-helpline.onrender.com</a>
+    <span>/phone</span><span>/admin</span>
+    <a href="https://github.com/DevBaghel-02/kisan-helpline" target="_blank" rel="noopener">GitHub repo</a>
+  </div>
+</header>
+
+<nav aria-label="Sections">
+  <a href="#before">Before demo</a><a href="#pitch">Pitch</a><a href="#demo">Demo</a><a href="#arch">Architecture</a>
+  <a href="#fe">Frontend</a><a href="#be">Backend</a><a href="#db">Database</a><a href="#flow">Data flow</a>
+  <a href="#phone">Phone</a><a href="#keys">API keys</a><a href="#sources">Real data</a><a href="#qa">Q&amp;A</a><a href="#limits">Limits</a>
+</nav>
+
+<section id="before">
+  <h2>Before you walk in</h2>
+  <ul>
+    <li><span class="warn">Open the link 2 minutes early.</span> The free server sleeps; the first load takes ~30–50 s.</li>
+    <li>Keep <code>/phone</code> open in one tab and <code>/</code> in another.</li>
+    <li>ADMIN_TOKEN: Render → kisan-helpline → <b>Environment</b>. Needed for CSV upload.</li>
+    <li>Each member owns one part: demo, backend + database, phone, pitch.</li>
+    <li>Don't know an answer? Say "that's in <code>data.py</code>, let me show you" and open the file.</li>
+  </ul>
+</section>
+
+<section id="pitch">
+  <h2>Pitch <small>~45 s</small></h2>
+  <div class="say"><b class="tag">English</b>
+  Before a farmer in Punjab loads his crop, he needs one answer: what's the price today? He has a keypad phone, he speaks Punjabi, and no app is built for him.<br><br>
+  Kisan Helpline lets him ask the way he talks: "Amritsar mandi vich kanak da ki bhaa hai?" In under a second he hears the answer in Punjabi, with the price and the date it's from. It also covers weather and government schemes, and answers in Hindi if he asks in Hindi.<br><br>
+  Our core rule: the bot never invents a number. No AI writes the answer. Every number comes from real data, and a checker blocks anything not in the source. If we don't know, it says so.<br><br>
+  About 0.9 seconds per answer against a 6-second limit, 12 of 12 noisy test questions, 48 tests, zero made-up numbers. It's live, and you can upload your own data without changing code.<br><br>
+  <b>One call. His language. A true answer.</b></div>
+  <div class="say"><b class="tag">Hinglish</b>
+  Punjab ka kisaan fasal mandi le jaane se pehle bas ek cheez jaanna chahta hai: aaj bhaav kya hai? Uske paas keypad phone hai, wo Punjabi bolta hai, aur koi app uske liye bani nahi. Kisan Helpline pe wo waise hi poochta hai jaise roz baat karta hai, aur ek second mein Punjabi mein jawab milta hai: bhaav aur tareekh. Mausam aur schemes bhi, aur Hindi mein poocho to Hindi mein jawab. Sabse bada rule: bot kabhi number nahi banata. Har number asli data se aata hai aur checker usse verify karta hai. <b>Ek call. Uski bhasha. Sachcha jawab.</b></div>
+</section>
+
+<section id="demo">
+  <h2>Demo order <small>phone first</small></h2>
+  <ol>
+    <li><b>0:00</b> Problem + solution, one line each.</li>
+    <li><b>0:30 Phone</b> (<code>/phone</code>): dial → greeting → say "ਅੰਮ੍ਰਿਤਸਰ ਮੰਡੀ ਵਿੱਚ ਕਣਕ ਦਾ ਭਾਅ" → answer → press <b>0</b> → weather. Say: "Same logic as a real call, at real phone quality."</li>
+    <li><b>1:30 Trust</b> (website): ask "सेब का भाव" → "I don't have that". No number invented.</li>
+    <li><b>2:00 Architecture</b>: draw the diagram below.</li>
+    <li><b>2:30 Numbers + close.</b> Offer: "Upload your CSV on /admin and ask again."</li>
+  </ol>
+</section>
+
+<section id="arch">
+  <h2>Architecture</h2>
+  <pre>Phone (keypad)  /  Website (mic, tiles)        ← FRONTEND: HTML, CSS, JS
+        │  Twilio webhook  /  fetch() → JSON
+        ▼
+FastAPI backend (Python, uvicorn, on Render)    ← BACKEND
+  speech → understand → look up → answer+check → speak
+        │              │               │
+        ▼              ▼               ▼
+  Google ASR     SQLite kisan.db   Open-Meteo / wttr.in
+  gTTS           schemes.json      (weather, live)</pre>
+  <p><b>Restaurant analogy:</b> frontend = menu + table, API = waiter, backend = kitchen, database = store room, external APIs = outside suppliers.</p>
+</section>
+
+<section id="fe">
+  <h2>Frontend</h2>
+  <p>Plain <b>HTML + CSS + JavaScript</b>, no framework, so it loads fast on 2G. Folder <code>static/</code>.</p>
+  <div class="tbl"><table>
+    <tr><th>URL</th><th>File</th><th>What</th></tr>
+    <tr><td><code>/</code></td><td><code>index.html</code></td><td>Farmer page: mic, crop tiles, weather, schemes</td></tr>
+    <tr><td><code>/phone</code></td><td><code>phone.html</code></td><td>Keypad phone simulator</td></tr>
+    <tr><td><code>/admin</code></td><td>admin page</td><td>CSV upload, query log, text test</td></tr>
+  </table></div>
+  <div class="say"><b class="tag">Say</b>Our frontend is plain HTML, CSS and JavaScript: a farmer page, a phone simulator and an admin page. It records the voice in the browser and sends it to our API with fetch.</div>
+</section>
+
+<section id="be">
+  <h2>Backend</h2>
+  <p><b>Python + FastAPI</b>, run by <b>uvicorn</b>, hosted on <b>Render</b>. Folder <code>app/</code>.</p>
+  <div class="tbl"><table>
+    <tr><th>File</th><th>Job</th></tr>
+    <tr><td><code>main.py</code></td><td>All routes (the front door)</td></tr>
+    <tr><td><code>speech.py</code></td><td>Voice → text (Google, pa-IN + hi-IN in parallel), text → voice (gTTS, cached)</td></tr>
+    <tr><td><code>intent.py</code>, <code>normalise.py</code></td><td>What was asked: crop, mandi, day, scheme, language. Fuzzy + local words</td></tr>
+    <tr><td><code>data.py</code></td><td>Talks to the SQLite database, imports CSV</td></tr>
+    <tr><td><code>answer.py</code></td><td>Builds the sentence from a template, <code>check_grounded()</code> verifies every number</td></tr>
+    <tr><td><code>weather.py</code></td><td>Open-Meteo, falls back to wttr.in, cached 30 min</td></tr>
+    <tr><td><code>pipeline.py</code></td><td>Runs the steps in order, picks the best speech guess, times each step</td></tr>
+    <tr><td><code>phone.py</code>, <code>phoneline.py</code></td><td>Call flow; phone-quality audio filter</td></tr>
+  </table></div>
+  <h3>API routes</h3>
+  <div class="tbl"><table>
+    <tr><th>Route</th><th>Does</th></tr>
+    <tr><td><code>POST /api/ask</code></td><td>Voice (WAV) in → answer JSON</td></tr>
+    <tr><td><code>POST /api/ask-text</code></td><td>Text question → answer JSON</td></tr>
+    <tr><td><code>GET /api/crops</code></td><td>Crops, mandis, schemes for the tiles</td></tr>
+    <tr><td><code>GET /audio/{name}</code></td><td>Answer MP3</td></tr>
+    <tr><td><code>POST /api/upload-csv</code></td><td>New price data (admin, token)</td></tr>
+    <tr><td><code>GET /api/log</code></td><td>Query log (admin)</td></tr>
+    <tr><td><code>/api/phone-sim/*</code></td><td>Phone simulator</td></tr>
+    <tr><td><code>/voice/*</code></td><td>Real Twilio call (TwiML)</td></tr>
+  </table></div>
+</section>
+
+<section id="db">
+  <h2>Database</h2>
+  <p><b>SQLite</b>, a single file <code>data/kisan.db</code> on the server. No separate DB server; built into Python; a query takes ~1 ms.</p>
+  <h3>Table <code>prices</code></h3>
+  <p class="mono">id · state · district · market · commodity · variety · arrival_date · min_price · max_price · modal_price</p>
+  <p>Unique rule: one row per market + crop + variety + date, so no duplicates.</p>
+  <h3>Table <code>query_log</code></h3>
+  <p class="mono">at · channel · heard · intent · crop · market · answered · answer · total_ms</p>
+  <h3>Other data</h3>
+  <ul>
+    <li><code>data/schemes.json</code>: 4 schemes, Punjabi + Hindi text, numbers, source links, date checked</li>
+    <li><code>data/synonyms.json</code>: dictionary (kanak = ਕਣਕ = गेहूं = wheat), 26 mandis with lat/lon</li>
+    <li><code>data/sample_prices.csv</code>: <span class="warn">made-up test prices</span>, loaded at start</li>
+    <li><code>data/tts_cache/</code>: generated audio, reused</li>
+  </ul>
+  <div class="say"><b class="tag">Say</b>We use SQLite. The database is one file, data/kisan.db, on our server, with two tables: prices and query_log. Prices load from CSV; upload yours on /admin and it goes straight into the prices table. Schemes are a JSON file; weather comes live from Open-Meteo. For a statewide rollout we'd move to PostgreSQL, and only data.py changes.</div>
+</section>
+
+<section id="flow">
+  <h2>One question, start to end</h2>
+  <ol>
+    <li>Farmer taps mic → browser records WAV (JavaScript)</li>
+    <li><code>fetch("/api/ask")</code> sends it to the backend</li>
+    <li>Google ASR, Punjabi + Hindi in parallel, 5 guesses each</li>
+    <li>Pick the guess that matches a real crop/mandi</li>
+    <li><code>intent.py</code> → {crop: wheat, mandi: Amritsar, intent: price}</li>
+    <li>SQL query on <code>kisan.db</code> → row: 2480 ₹, 19 Nov</li>
+    <li>Template sentence; <code>check_grounded()</code> checks every number against the row</li>
+    <li>gTTS makes the MP3 (or cache)</li>
+    <li>JSON back: text, source, timings, audio → browser shows and plays</li>
+  </ol>
+  <div class="stats">
+    <div class="stat"><b>0.9 s</b><span>avg answer (limit 6 s)</span></div>
+    <div class="stat"><b>12/12</b><span>noisy test questions</span></div>
+    <div class="stat"><b>48</b><span>automated tests</span></div>
+    <div class="stat"><b>0</b><span>invented numbers</span></div>
+  </div>
+</section>
+
+<section id="phone">
+  <h2>Phone call</h2>
+  <ol>
+    <li>Farmer calls → telecom (Twilio/Exotel) asks our server what to say</li>
+    <li>Greeting → beep → record question (stops after 2 s silence, max 12 s)</li>
+    <li>Same pipeline → answer played → "anything else?"</li>
+    <li>Fails twice → keypad: 1 wheat, 2 paddy … <b>0 weather</b></li>
+  </ol>
+  <p><b>One flow, two outputs:</b> the call logic is written once (<code>flow_*</code> in <code>phone.py</code>). It renders as <b>TwiML</b> for a real Twilio call and as <b>JSON</b> for the simulator.</p>
+  <p><b>Phone-line filter:</b> 300–3400 Hz band-pass, 8 kHz, mu-law. Your laptop voice is degraded to real call quality before recognition.</p>
+  <div class="say"><b class="tag">Say</b>A Twilio trial can't buy a number any more, so we demo with a simulator that runs the exact same call logic at real phone quality. The real-call code is ready at /voice. For rollout, a free missed-call number through an Indian provider like Exotel.</div>
+</section>
+
+<section id="keys">
+  <h2>API keys</h2>
+  <p>None needed. We chose free, keyless services on purpose.</p>
+  <div class="tbl"><table>
+    <tr><th>Service</th><th>Job</th><th>Key</th></tr>
+    <tr><td>Google Speech (SpeechRecognition lib)</td><td>Voice → text</td><td>No</td></tr>
+    <tr><td>gTTS</td><td>Text → voice</td><td>No</td></tr>
+    <tr><td>Open-Meteo / wttr.in</td><td>Weather</td><td>No</td></tr>
+    <tr><td>Render</td><td>Hosting</td><td>Free plan</td></tr>
+    <tr><td>ADMIN_TOKEN</td><td>Admin upload password</td><td>Generated by Render, stored as env variable</td></tr>
+    <tr><td>Twilio</td><td>Real calls</td><td>Not used yet (trial)</td></tr>
+  </table></div>
+  <p>Secrets live in <code>.env</code> / Render Environment, never in GitHub.</p>
+</section>
+
+<section id="sources">
+  <h2>Real data sources</h2>
+  <div class="tbl"><table>
+    <tr><th>Data</th><th>Source</th></tr>
+    <tr><td>Mandi prices</td><td><b>Agmarknet via data.gov.in API</b> (free key, JSON, filter state = Punjab). Same columns as our <code>prices</code> table → daily job fetches and inserts. Also agmarknet.gov.in, eNAM, Punjab Mandi Board</td></tr>
+    <tr><td>Weather</td><td>Open-Meteo (now), IMD for official forecasts and agromet advisories</td></tr>
+    <tr><td>Schemes</td><td>pmkisan.gov.in, pmfby.gov.in, agrimachinery.nic.in, myscheme.gov.in</td></tr>
+    <tr><td>Speech (next)</td><td>Bhashini (govt, free key), AI4Bharat models</td></tr>
+    <tr><td>Crop advice (later)</td><td>PAU advisories, Krishi Vigyan Kendra</td></tr>
+  </table></div>
+</section>
+
+<section id="qa">
+  <h2>Judge questions</h2>
+  <div class="qa">
+    <div><b>Why no LLM?</b>An LLM can invent numbers and is slower. Rules understand, data fills, checker verifies. Fast and trustworthy.</div>
+    <div><b>How do you stop wrong numbers?</b><code>check_grounded()</code> pulls every number from the sentence and matches it to the source row. Any mismatch blocks the answer.</div>
+    <div><b>How does it handle noise?</b>5 guesses × 2 languages; we choose the one that matches a real crop and mandi. Keypad fallback after 2 failures.</div>
+    <div><b>Local words / spellings?</b><code>synonyms.json</code> + Gurmukhi "skeleton" (drops vowel signs) + fuzzy matching. kanak, ਕਨਕ, गेहूं all mean wheat.</div>
+    <div><b>Hindi?</b>Devanagari script, or Hindi-only words written in Gurmukhi (ਮੇਂ, ਕਾ). Reply in the same language.</div>
+    <div><b>Your own dataset?</b>Upload CSV on /admin; column names are matched flexibly; Replace or Merge. No code change.</div>
+    <div><b>How under 6 s?</b>Parallel ASR, rule-based understanding (~10 ms), SQLite (~1 ms), cached audio. Timings shown on screen.</div>
+    <div><b>Security?</b>Admin token for uploads, Twilio signature check, secrets in env variables.</div>
+    <div><b>How to scale?</b>PostgreSQL, Bhashini, Exotel number. Each provider sits in one file.</div>
+    <div><b>Problems after deploy?</b>Server is on UTC, so dates were a day behind after midnight IST → fixed with India time. Open-Meteo rate-limited Render's shared IP (429) → added wttr.in fallback.</div>
+  </div>
+</section>
+
+<section id="limits">
+  <h2>Known limits <small>say them yourself</small></h2>
+  <ul>
+    <li>Voice tests used synthetic voices; real farmer voices are next.</li>
+    <li>On phone audio, mandi names can be misheard; the bot lists mandis instead of guessing.</li>
+    <li>Google's free ASR is unofficial and rate-limited → Bhashini planned.</li>
+    <li>4 schemes only, updated by hand with source and date.</li>
+    <li>Sample prices are made up; real ones come from your CSV or Agmarknet.</li>
+    <li>Free server sleeps after 15 min; uploaded CSV is lost on restart.</li>
+  </ul>
+</section>
+</div>
+
+</body></html>
